@@ -18,7 +18,7 @@ model = dict(
         num_outs=5),
     bbox_head=dict(
         type='RetinaHead',
-        num_classes=81,
+        num_classes=11,
         in_channels=256,
         stacked_convs=4,
         feat_channels=256,
@@ -27,14 +27,7 @@ model = dict(
         anchor_ratios=[0.5, 1.0, 2.0],
         anchor_strides=[8, 16, 32, 64, 128],
         target_means=[.0, .0, .0, .0],
-        target_stds=[1.0, 1.0, 1.0, 1.0],
-        loss_cls=dict(
-            type='FocalLoss',
-            use_sigmoid=True,
-            gamma=2.0,
-            alpha=0.25,
-            loss_weight=1.0),
-        loss_bbox=dict(type='SmoothL1Loss', beta=0.11, loss_weight=1.0)))
+        target_stds=[1.0, 1.0, 1.0, 1.0]))
 # training and testing settings
 train_cfg = dict(
     assigner=dict(
@@ -43,6 +36,9 @@ train_cfg = dict(
         neg_iou_thr=0.4,
         min_pos_iou=0,
         ignore_iof_thr=-1),
+    smoothl1_beta=0.11,
+    gamma=2.0,
+    alpha=0.25,
     allowed_border=-1,
     pos_weight=-1,
     debug=False)
@@ -53,15 +49,13 @@ test_cfg = dict(
     nms=dict(type='nms', iou_thr=0.5),
     max_per_img=100)
 # dataset settings
-# dataset_type = 'CocoDataset'
-# data_root = 'data/coco/'
 dataset_type = 'BDDDataset'
 data_root = '/home/member/Workspace/tuan/dataset/bdd100k_voc/'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 data = dict(
-    imgs_per_gpu=2,
-    workers_per_gpu=2,
+    imgs_per_gpu=16,
+    workers_per_gpu=20,
     train=dict(
         type=dataset_type,
         # ann_file=data_root + 'annotations/instances_train2017.json',
@@ -106,8 +100,7 @@ data = dict(
         with_label=False,
         test_mode=True))
 # optimizer
-# optimizer = dict(type='SGD', lr=0.01, momentum=0.9, weight_decay=0.0001)
-optimizer = dict(type='SGD', lr=0.01, momentum=0.9, weight_decay=0.0001)
+optimizer = dict(type='SGD', lr=0.1, momentum=0.9, weight_decay=0.0001)
 optimizer_config = dict(grad_clip=dict(max_norm=35, norm_type=2))
 # learning policy
 lr_config = dict(
@@ -134,6 +127,7 @@ work_dir = './work_dirs/retinanet_r50_fpn_1x'
 load_from = None
 resume_from = None
 workflow = [('train', 1)]
+#prun
 prun = dict(
     rate_norm=0.9,
     rate_dist=0.3,
