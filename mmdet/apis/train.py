@@ -22,6 +22,7 @@ from mmcv.runner.hooks import (Hook, LrUpdaterHook, CheckpointHook, IterTimerHoo
 import numpy as np
 from scipy.spatial import distance
 from torch._six import inf
+#from torchstat import stat
 # from thop import profile
 # from ptflops import get_model_complexity_info
 
@@ -84,7 +85,8 @@ class Runner(mmcvRunner):
     def __init__(self, model, batch_processor, optimizer=None, work_dir=None, log_level=logging.INFO):
         super(Runner, self).__init__(model, batch_processor, optimizer, work_dir, log_level)
 
-    def train(self, data_loader, m, **kwargs):
+    def train(self, data_loader, m, config, **kwargs):
+    # def train(self, data_loader, m, **kwargs):
         
         self.model.train()
         self.mode = 'train'
@@ -121,6 +123,13 @@ class Runner(mmcvRunner):
 
         self.call_hook('after_train_epoch')
         self._epoch += 1
+        m.model = self.model
+        m.if_zero()
+        m.init_mask(config.prun.rate_norm, config.prun.rate_dist, config)
+        m.do_mask()
+        m.do_similar_mask()
+        m.if_zero()
+        self.model = m.model
 
     def val(self, data_loader, **kwargs):
         self.model.eval()
@@ -144,7 +153,8 @@ class Runner(mmcvRunner):
 
         self.call_hook('after_val_epoch')    
 
-    def run(self, data_loaders, m, workflow, max_epochs, **kwargs):
+    def run(self, data_loaders, m, workflow, max_epochs, config, **kwargs):
+    # def run(self, data_loaders, m, workflow, max_epochs, **kwargs):
         """Start running.
         Args:
             data_loaders (list[:obj:`DataLoader`]): Dataloaders for training
@@ -184,7 +194,8 @@ class Runner(mmcvRunner):
                 for _ in range(epochs):
                     if mode == 'train' and self.epoch >= max_epochs:
                         return
-                    epoch_runner(data_loaders[i], m, **kwargs)
+                    # epoch_runner(data_loaders[i], m, **kwargs)
+                    epoch_runner(data_loaders[i], m, config, **kwargs)
 
         time.sleep(1)  # wait for some hooks like loggers to finish
         self.call_hook('after_run')
@@ -235,6 +246,7 @@ def parse_losses(losses):
 
 def batch_processor(model, data, train_mode):
     losses = model(**data)
+    # stat(model, data, (3, 1280, 768))
     loss, log_vars = parse_losses(losses)
 
     outputs = dict(
@@ -343,24 +355,10 @@ def _dist_train(model, dataset, cfg, validate=False):
     # build runner
     optimizer = build_optimizer(model, cfg.optimizer)
 
-    # add prune
-    m = Mask(model)
-    m.init_length()
-    print("-" * 10 + "one epoch begin" + "-" * 10)
-    print("remaining ratio of pruning : Norm is %f" % cfg.prun.rate_norm)
-    print("reducing ratio of pruning : Distance is %f" % cfg.prun.rate_dist)
-    print("total remaining ratio is %f" % (cfg.prun.rate_norm - cfg.prun.rate_dist))
-
-    m.model = model
-    m.init_mask(cfg.prun.rate_norm, cfg.prun.rate_dist, cfg)
-    # m.if_zero()
-    m.do_mask()
-    m.do_similar_mask()
-    model = m.model
-    m.if_zero()
-
+    # runner = mmcvRunner(model, batch_processor, optimizer, cfg.work_dir,
+    #                 cfg.log_level)
     runner = Runner(model, batch_processor, optimizer, cfg.work_dir,
-                    cfg.log_level)
+                   cfg.log_level)
     # register hooks
     optimizer_config = DistOptimizerHook(**cfg.optimizer_config)
     runner.register_training_hooks(cfg.lr_config, optimizer_config,
@@ -383,8 +381,28 @@ def _dist_train(model, dataset, cfg, validate=False):
         runner.resume(cfg.resume_from)
     elif cfg.load_from:
         runner.load_checkpoint(cfg.load_from)
+
+    # add prune
+    m = Mask(model)
+    m.init_length()
+    print("-" * 10 + "one epoch begin" + "-" * 10)
+    print("remaining ratio of pruning : Norm is %f" % cfg.prun.rate_norm)
+    print("reducing ratio of pruning : Distance is %f" % cfg.prun.rate_dist)
+    print("total remaining ratio is %f" % (cfg.prun.rate_norm - cfg.prun.rate_dist))
+
+    m.model = model
+    m.init_mask(cfg.prun.rate_norm, cfg.prun.rate_dist, cfg)
+    # m.if_zero()
+    m.do_mask()
+    m.do_similar_mask()
+    model = m.model
+    m.if_zero()
+
+    # normal mode
     # runner.run(data_loaders, cfg.workflow, cfg.total_epochs)
-    runner.run(data_loaders, m, cfg.workflow, cfg.total_epochs)
+    # prune mode
+    runner.run(data_loaders, m, cfg.workflow, cfg.total_epochs, cfg)
+    # runner.run(data_loaders, m, cfg.workflow, cfg.total_epochs)
 
 def _non_dist_train(model, dataset, cfg, validate=False):
     # prepare data loaders
