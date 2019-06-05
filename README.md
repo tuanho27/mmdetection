@@ -1,3 +1,7 @@
+# Additional information for this branch
+- add pruning code follow Filter Geometric-Median pruning paper
+- add config for training deep driver dataset including evaluation
+- add efficentnet for detection
 
 # mmdetection
 
