@@ -3,9 +3,9 @@
 - add config for training deep driver dataset including evaluation
 - add efficientnet for detection  
 - **Result w/ efficientnet b3 + fpn + retina origin**
-|---------------|-------|
+
 | class         | mAP   |
-|---------------|-------|
+|---------------|:-----:|
 | bike          | 0.457 |
 | bus           | 0.593 |
 | car           | 0.765 |
@@ -18,13 +18,12 @@
 | truck         | 0.607 |
 |---------------|-------|
 | mAP           | 0.513 |
-|---------------|-------|
+
 
 - **Result w/ efficientnet b3 without upsample, squeeze and excitation**
 
-|---------------|-------|
 | class         | mAP   |
-|---------------|-------|
+|---------------|:-----:|
 | bike          | 0.409 |
 | bus           | 0.573 |
 | car           | 0.758 |
@@ -37,7 +36,7 @@
 | truck         | 0.583 |
 |---------------|-------|
 | mAP           | 0.485 |
-|---------------|-------|
+
 
 # mmdetection
 
