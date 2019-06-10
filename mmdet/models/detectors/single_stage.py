@@ -23,7 +23,8 @@ class SingleStageDetector(BaseDetector):
         self.bbox_head = builder.build_head(bbox_head)
         self.train_cfg = train_cfg
         self.test_cfg = test_cfg
-        #self.init_weights(pretrained=pretrained)
+        # change init weight for efficientnet by adding the model backbone as input
+        # self.init_weights(pretrained=pretrained)
         self.backbone.init_weights(self.backbone,pretrained=pretrained)
 
     def init_weights(self, pretrained=None):

@@ -2,16 +2,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-# from .utils import (
-#     relu_fn,
-#     round_filters,
-#     round_repeats,
-#     drop_connect,
-#     Conv2dSamePadding,
-#     get_model_params,
-#     efficientnet_params,
-#     load_pretrained_weights,
-# )
+## This file refers the implementation of Efficiennet on below repo:
+## https://github.com/lukemelas/EfficientNet-PyTorch 
 
 """
 This file contains helper functions for building the model and for loading model parameters.
@@ -25,9 +17,10 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from torch.utils import model_zoo
+
 from ..registry import BACKBONES
 import logging
-
+from mmcv.runner import load_checkpoint
 ########################################################################
 ############### HELPERS FUNCTIONS FOR MODEL ARCHITECTURE ###############
 ########################################################################
@@ -258,6 +251,7 @@ def load_pretrained_weights(model, model_name):
     """ Loads pretrained weights, and downloads if loading for the first time. """
     #state_dict = model_zoo.load_url(url_map[model_name])
     state_dict = model_zoo.load_url(model_name)
+
     model.load_state_dict(state_dict)
     print('Loaded pretrained weights for {}'.format(model_name))
 
@@ -279,7 +273,9 @@ class MBConvBlock(nn.Module):
         self._block_args = block_args
         self._bn_mom = 1 - global_params.batch_norm_momentum
         self._bn_eps = global_params.batch_norm_epsilon
-        self.has_se = (self._block_args.se_ratio is not None) and (0 < self._block_args.se_ratio <= 1)
+        # set the squeeze and excitation false by default
+        # self.has_se = (self._block_args.se_ratio is not None) and (0 < self._block_args.se_ratio <= 1)
+        self.has_se = False 
         self.id_skip = block_args.id_skip  # skip connection and drop connect
 
         # Expansion phase
@@ -357,6 +353,7 @@ class EfficientNet(nn.Module):
     #    assert len(blocks_args) > 0, 'block args must be greater than 0'
     #    self._global_params = global_params
     #    self._blocks_args = blocks_args
+
     def __init__(self, model_name=None, out_indices=(0, 1, 2, 3), override_params=None):
         super().__init__()
         blocks_args, global_params = get_model_params(model_name, override_params)
@@ -415,6 +412,7 @@ class EfficientNet(nn.Module):
             if drop_connect_rate:
                 drop_connect_rate *= float(idx) / len(self._blocks)
             x = block(x) # , drop_connect_rate) # see https://github.com/tensorflow/tpu/issues/381
+            # print(idx, x.size())
             if idx in self.out_indices:
                 outs.append(x)
         return tuple(outs)        
@@ -460,8 +458,11 @@ class EfficientNet(nn.Module):
         valid_models = ['efficientnet_b'+str(i) for i in range(num_models)]
         if model_name.replace('-','_') not in valid_models:
             raise ValueError('model_name should be one of: ' + ', '.join(valid_models))
+            
     @classmethod
     def init_weights(self, model, pretrained=None):
         if isinstance(pretrained, str):
-            # logger = logging.getLogger()
-            load_pretrained_weights(model, pretrained)
+            logger = logging.getLogger()
+            load_checkpoint(model, pretrained, strict=False,logger=logger)
+        else:
+            raise TypeError('pretrained must be a str or None')

@@ -22,7 +22,7 @@ from mmcv.runner.hooks import (Hook, LrUpdaterHook, CheckpointHook, IterTimerHoo
 import numpy as np
 from scipy.spatial import distance
 from torch._six import inf
-#from torchstat import stat
+# from torchstat import stat
 # from thop import profile
 # from ptflops import get_model_complexity_info
 
@@ -246,6 +246,7 @@ def parse_losses(losses):
 
 def batch_processor(model, data, train_mode):
     losses = model(**data)
+    # comment for FLOP calculation
     # stat(model, data, (3, 1280, 768))
     loss, log_vars = parse_losses(losses)
 
